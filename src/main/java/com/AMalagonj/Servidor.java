@@ -10,15 +10,15 @@ import java.util.regex.Pattern;
 public class Servidor {
     public static void main(String[] args) {
         final int PUERTO = 9876;
-        byte[] buffer = new byte[1024]; // Buffer fijo para recepción
-        String nombreServidor = "ServidorPrincipal";
+        byte[] buffer = new byte[1024];
+        String nombreServidor = "ServidorPrincipalAntonio";
 
         try {
             DatagramSocket socket = new DatagramSocket(PUERTO);
             System.out.println("Servidor UDP escuchando en el puerto " + PUERTO);
 
             while (true) {
-                // Reiniciamos el DatagramPacket de recepción con el buffer original completo
+
                 DatagramPacket peticion = new DatagramPacket(buffer, buffer.length);
                 socket.receive(peticion);
 
@@ -35,7 +35,7 @@ public class Servidor {
                     InetAddress direccionCliente = peticion.getAddress();
                     int puertoCliente = peticion.getPort();
 
-                    // Preparamos la respuesta en un array de bytes NUEVO, sin tocar el buffer de recepción
+
                     String respuesta = "@hola#" + nombreServidor + "@";
                     byte[] bufferRespuesta = respuesta.getBytes();
                     

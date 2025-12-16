@@ -1,50 +1,71 @@
 package com.AMalagonj;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketTimeoutException;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Cliente {
     public static void main(String[] args) {
         final int PUERTO_SERVIDOR = 9876;
-        String nombreCliente = "Antonio";
+        String nombreCliente = "ClienteExplorador";
+
+        String direccionBroadcast = "172.16.8.255"; 
+        
+        List<InetSocketAddress> amigosEncontrados = new ArrayList<>();
 
         try {
-            InetAddress direccionServidor = InetAddress.getByName("localhost");
             DatagramSocket socket = new DatagramSocket();
-            socket.setSoTimeout(5000); // 5 segundos de timeout
+            socket.setBroadcast(true);
+            socket.setSoTimeout(2000);
 
-            // Buffer para enviar
+            InetAddress broadcastAddress = InetAddress.getByName(direccionBroadcast);
+            InetAddress miIp = InetAddress.getLocalHost();
+
+
             String mensaje = "@hola#" + nombreCliente + "@";
             byte[] bufferEnvio = mensaje.getBytes();
-            DatagramPacket pregunta = new DatagramPacket(bufferEnvio, bufferEnvio.length, direccionServidor, PUERTO_SERVIDOR);
+            DatagramPacket pregunta = new DatagramPacket(bufferEnvio, bufferEnvio.length, broadcastAddress, PUERTO_SERVIDOR);
             socket.send(pregunta);
-
-            // Buffer para recibir
+            System.out.println("Broadcast enviado a " + direccionBroadcast + ". Esperando respuestas...");
             byte[] bufferRecepcion = new byte[1024];
-            DatagramPacket peticion = new DatagramPacket(bufferRecepcion, bufferRecepcion.length);
-            socket.receive(peticion);
+            
+            try {
+                while (true) {
+                    DatagramPacket peticion = new DatagramPacket(bufferRecepcion, bufferRecepcion.length);
+                    socket.receive(peticion);
 
-            String respuesta = new String(peticion.getData(), 0, peticion.getLength());
 
-            Pattern pattern = Pattern.compile("@hola#(.+?)@");
-            Matcher matcher = pattern.matcher(respuesta);
+                    if (peticion.getAddress().equals(miIp)) {
+                        continue;
+                    }
 
-            if (matcher.matches()) {
-                String nombreServidor = matcher.group(1);
-                System.out.println("Conectado al servidor: " + nombreServidor);
-            } else {
-                System.out.println("Respuesta del servidor con formato no válido: " + respuesta);
+                    String respuesta = new String(peticion.getData(), 0, peticion.getLength());
+                    
+                    Pattern pattern = Pattern.compile("@hola#(.+?)@");
+                    Matcher matcher = pattern.matcher(respuesta);
+
+                    if (matcher.matches()) {
+                        String nombreServidor = matcher.group(1);
+                        InetSocketAddress direccionAmigo = new InetSocketAddress(peticion.getAddress(), peticion.getPort());
+                        
+                        // Evitar duplicados
+                        if (!amigosEncontrados.contains(direccionAmigo)) {
+                            amigosEncontrados.add(direccionAmigo);
+                            System.out.println("¡Amigo encontrado!: " + nombreServidor + " en " + peticion.getAddress());
+                        }
+                    } else {
+                        System.out.println("Respuesta con formato no válido recibida de: " + peticion.getAddress());
+                    }
+                }
+            } catch (SocketTimeoutException e) {
+                System.out.println("Fin de la espera. Total amigos encontrados: " + amigosEncontrados.size());
             }
 
             socket.close();
 
-        } catch (SocketTimeoutException e) {
-            System.out.println("Tiempo de espera agotado. El servidor no respondió.");
         } catch (IOException e) {
             e.printStackTrace();
         }
